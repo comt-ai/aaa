@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스마트 사다리 타기</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti for Celebration -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Pretendard', sans-serif;
+            touch-action: manipulation;
+        }
+        .custom-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        }
+        canvas {
+            display: block;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
+
+    <!-- Header Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-md shadow-indigo-200">
+                    <i class="fa-solid font-bold fa-network-wired"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold text-slate-900 leading-tight">스마트 사다리 타기</h1>
+                    <p class="text-xs text-slate-500 font-medium">공정하고 재미있는 내기 사다리게임</p>
+                </div>
+            </div>
+            <button id="reset-all-btn" class="text-xs sm:text-sm text-slate-600 hover:text-indigo-600 font-semibold px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-200 bg-white transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-rotate-right"></i> 초기화
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-5xl mx-auto w-full px-4 py-6 flex-1 flex flex-col gap-6">
+
+        <!-- Controls & Input Setup Section -->
+        <section id="setup-section" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 custom-shadow transition-all duration-300">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-slate-100">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-indigo-500"></i> 참가자 및 결과 설정
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">이름과 결과를 입력 후 사다리를 생성하세요. (최대 10명)</p>
+                </div>
+                
+                <!-- Quick Preset / Player Count Button -->
+                <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
+                    <button id="btn-dec" class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-slate-700 font-bold hover:bg-slate-50 active:scale-95 transition">
+                        <i class="fa-solid fa-minus text-xs"></i>
+                    </button>
+                    <span id="player-count-display" class="px-3 font-bold text-indigo-600 text-sm">4명</span>
+                    <button id="btn-inc" class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-slate-700 font-bold hover:bg-slate-50 active:scale-95 transition">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Input Cards Container -->
+            <div id="input-fields-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[350px] overflow-y-auto p-1">
+                <!-- Dynamically Inserted Items -->
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-6 flex flex-wrap gap-3 justify-end border-t border-slate-100 pt-4">
+                <button id="randomize-btn" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition flex items-center gap-2">
+                    <i class="fa-solid fa-shuffle text-indigo-500"></i> 결과 섞기
+                </button>
+                <button id="build-ladder-btn" class="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200 transition active:scale-95 flex items-center gap-2">
+                    <i class="fa-solid fa-play"></i> 사다리 생성하기
+                </button>
+            </div>
+        </section>
+
+        <!-- Ladder Interactive Canvas Area -->
+        <section id="game-section" class="hidden flex-1 bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 custom-shadow flex flex-col items-center">
+            
+            <!-- Game Toolbar -->
+            <div class="w-full flex flex-wrap justify-between items-center gap-3 mb-4 pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-xs sm:text-sm font-bold text-slate-700" id="status-text">이름을 클릭하거나 [전체 시작]을 누르세요</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="edit-ladder-btn" class="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition">
+                        <i class="fa-solid fa-pen"></i> 수정
+                    </button>
+                    <button id="rebuild-btn" class="px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition">
+                        <i class="fa-solid fa-arrows-rotate"></i> 다시 그리기
+                    </button>
+                    <button id="run-all-btn" class="px-4 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition active:scale-95">
+                        <i class="fa-solid fa-bolt"></i> 전체 시작
+                    </button>
+                </div>
+            </div>
+
+            <!-- Top Names List -->
+            <div id="top-names-container" class="w-full flex justify-around items-center py-2 px-4 bg-slate-50 rounded-xl mb-2">
+                <!-- Inserted Dynamically -->
+            </div>
+
+            <!-- Ladder Canvas Wrapper -->
+            <div class="w-full relative flex-1 min-h-[360px] max-h-[500px] my-2 overflow-hidden flex justify-center items-center">
+                <canvas id="ladder-canvas" class="w-full h-full rounded-lg"></canvas>
+            </div>
+
+            <!-- Bottom Results List -->
+            <div id="bottom-results-container" class="w-full flex justify-around items-center py-2 px-4 bg-slate-50 rounded-xl mt-2">
+                <!-- Inserted Dynamically -->
+            </div>
+
+        </section>
+
+        <!-- Final Result Summary Modal/Panel -->
+        <section id="summary-section" class="hidden bg-white rounded-2xl p-5 border border-slate-200/80 custom-shadow">
+            <h3 class="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-trophy text-amber-500"></i> 최종 결과 요약
+            </h3>
+            <div id="summary-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
+                <!-- Dynamically populated results -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+        <p>© 2026 Smart Ladder App. 웹 & 모바일 전용 사다리 타기 프로그램</p>
+    </footer>
+
+    <!-- Audio Effects (Web Audio API fallback implemented in JS) -->
+    
+    <script>
+        // Color Palette for Players
+        const PLAYER_COLORS = [
+            '#4F46E5', // Indigo
+            '#059669', // Emerald
+            '#D97706', // Amber
+            '#E11D48', // Rose
+            '#7C3AED', // Violet
+            '#0891B2', // Cyan
+            '#EA580C', // Orange
+            '#2563EB', // Blue
+            '#DB2777', // Pink
+            '#65A30D'  // Lime
+        ];
+
+        // State Management
+        let players = [
+            { name: '참가자 1', result: '당첨 🎉' },
+            { name: '참가자 2', result: '꽝 ❌' },
+            { name: '참가자 3', result: '커피 ☕' },
+            { name: '참가자 4', result: '꽝 ❌' }
+        ];
+
+        let horizontalLines = []; // {yRatio: 0.2, fromCol: 0}
+        let isAnimating = false;
+        let activePaths = []; // Track paths during animation
+        let completedPlayers = new Set();
+        let finalMapping = {}; // { playerIndex: resultIndex }
+
+        // DOM Elements
+        const setupSection = document.getElementById('setup-section');
+        const gameSection = document.getElementById('game-section');
+        const summarySection = document.getElementById('summary-section');
+        const inputFieldsContainer = document.getElementById('input-fields-container');
+        const playerCountDisplay = document.getElementById('player-count-display');
+        const btnInc = document.getElementById('btn-inc');
+        const btnDec = document.getElementById('btn-dec');
+        const buildLadderBtn = document.getElementById('build-ladder-btn');
+        const randomizeBtn = document.getElementById('randomize-btn');
+        const resetAllBtn = document.getElementById('reset-all-btn');
+        const editLadderBtn = document.getElementById('edit-ladder-btn');
+        const rebuildBtn = document.getElementById('rebuild-btn');
+        const runAllBtn = document.getElementById('run-all-btn');
+        const canvas = document.getElementById('ladder-canvas');
+        const ctx = canvas.getContext('2d');
+        const topNamesContainer = document.getElementById('top-names-container');
+        const bottomResultsContainer = document.getElementById('bottom-results-container');
+        const summaryList = document.getElementById('summary-list');
+        const statusText = document.getElementById('status-text');
+
+        // Simple Audio Synthesizer using Web Audio API
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'step') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.05);
+                } else if (type === 'complete') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.3);
+                }
+            } catch (e) {
+                // Audio context not allowed without user interaction
+            }
+        }
+
+        // Initialize App Inputs
+        function renderInputFields() {
+            inputFieldsContainer.innerHTML = '';
+            playerCountDisplay.textContent = `${players.length}명`;
+
+            players.forEach((player, index) => {
+                const color = PLAYER_COLORS[index % PLAYER_COLORS.length];
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col gap-2 relative transition hover:border-indigo-300";
+                card.innerHTML = `
+                    <div class="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                        <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${color}"></span>
+                        <span>번 ${index + 1}</span>
+                    </div>
+                    <input type="text" data-index="${index}" data-type="name" value="${escapeHtml(player.name)}" placeholder="이름" 
+                        class="w-full px-2.5 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500">
+                    <input type="text" data-index="${index}" data-type="result" value="${escapeHtml(player.result)}" placeholder="결과" 
+                        class="w-full px-2.5 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-600">
+                `;
+                inputFieldsContainer.appendChild(card);
+            });
+
+            // Add Event Listeners for inputs
+            inputFieldsContainer.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const idx = parseInt(e.target.dataset.index);
+                    const type = e.target.dataset.type;
+                    players[idx][type] = e.target.value;
+                });
+            });
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Add/Remove Players
+        btnInc.addEventListener('click', () => {
+            if (players.length < 10) {
+                players.push({ name: `참가자 ${players.length + 1}`, result: '꽝 ❌' });
+                renderInputFields();
+            }
+        });
+
+        btnDec.addEventListener('click', () => {
+            if (players.length > 2) {
+                players.pop();
+                renderInputFields();
+            }
+        });
+
+        randomizeBtn.addEventListener('click', () => {
+            const results = players.map(p => p.result);
+            // Fisher-Yates Shuffle
+            for (let i = results.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [results[i], results[j]] = [results[j], results[i]];
+            }
+            players.forEach((p, idx) => p.result = results[idx]);
+            renderInputFields();
+        });
+
+        resetAllBtn.addEventListener('click', () => {
+            players = [
+                { name: '참가자 1', result: '당첨 🎉' },
+                { name: '참가자 2', result: '꽝 ❌' },
+                { name: '참가자 3', result: '커피 ☕' },
+                { name: '참가자 4', result: '꽝 ❌' }
+            ];
+            completedPlayers.clear();
+            finalMapping = {};
+            renderInputFields();
+            switchToSetup();
+        });
+
+        // Switch Screen Views
+        function switchToSetup() {
+            setupSection.classList.remove('hidden');
+            gameSection.classList.add('hidden');
+            summarySection.classList.add('hidden');
+        }
+
+        function switchToGame() {
+            setupSection.classList.add('hidden');
+            gameSection.classList.remove('hidden');
+            summarySection.classList.add('hidden');
+            completedPlayers.clear();
+            finalMapping = {};
+            generateLadderStructure();
+            renderHeaderFooterUI();
+            resizeCanvas();
+            drawBaseLadder();
+        }
+
+        buildLadderBtn.addEventListener('click', () => {
+            // Validate inputs
+            for (let i = 0; i < players.length; i++) {
+                if (!players[i].name.trim()) players[i].name = `참가자 ${i + 1}`;
+                if (!players[i].result.trim()) players[i].result = `-`;
+            }
+            switchToGame();
+        });
+
+        editLadderBtn.addEventListener('click', switchToSetup);
+        rebuildBtn.addEventListener('click', () => {
+            completedPlayers.clear();
+            finalMapping = {};
+            summarySection.classList.add('hidden');
+            generateLadderStructure();
+            drawBaseLadder();
+            renderHeaderFooterUI();
+            statusText.textContent = '사다리가 새로 생성되었습니다.';
+        });
+
+        // Ladder Generator Logic
+        function generateLadderStructure() {
+            horizontalLines = [];
+            const cols = players.length;
+            const minLinesPerCol = 3;
+            const maxLinesPerCol = 5;
+
+            // Generate random horizontal rungs for each adjacent pair
+            for (let c = 0; c < cols - 1; c++) {
+                const count = Math.floor(Math.random() * (maxLinesPerCol - minLinesPerCol + 1)) + minLinesPerCol;
+                for (let i = 0; i < count; i++) {
+                    let yRatio;
+                    let attempts = 0;
+                    let valid = false;
+
+                    // Ensure minimum distance between horizontal rungs
+                    while (!valid && attempts < 20) {
+                        yRatio = 0.12 + Math.random() * 0.76;
+                        valid = true;
+                        for (let line of horizontalLines) {
+                            if (Math.abs(line.yRatio - yRatio) < 0.05) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                        attempts++;
+                    }
+                    if (valid) {
+                        horizontalLines.push({ yRatio, fromCol: c });
+                    }
+                }
+            }
+
+            // Sort lines by vertical position
+            horizontalLines.sort((a, b) => a.yRatio - b.yRatio);
+        }
+
+        // Setup Header/Footer UI Buttons in Game
+        function renderHeaderFooterUI() {
+            topNamesContainer.innerHTML = '';
+            bottomResultsContainer.innerHTML = '';
+
+            const cols = players.length;
+            players.forEach((player, i) => {
+                const color = PLAYER_COLORS[i % PLAYER_COLORS.length];
+
+                // Top Player Button
+                const topBtn = document.createElement('button');
+                topBtn.className = `px-3 py-1.5 rounded-xl text-xs font-extrabold text-white transition transform hover:scale-105 shadow-sm active:scale-95 flex items-center justify-center gap-1`;
+                topBtn.style.backgroundColor = color;
+                topBtn.style.width = `${100 / cols - 2}%`;
+                topBtn.innerHTML = `<span class="truncate">${escapeHtml(player.name)}</span>`;
+                topBtn.addEventListener('click', () => startSingleLadder(i));
+                topNamesContainer.appendChild(topBtn);
+
+                // Bottom Result Container
+                const btmBox = document.createElement('div');
+                btmBox.className = `px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 text-center shadow-xs truncate`;
+                btmBox.style.width = `${100 / cols - 2}%`;
+                btmBox.id = `bottom-result-${i}`;
+                btmBox.textContent = escapeHtml(player.result);
+                bottomResultsContainer.appendChild(btmBox);
+            });
+        }
+
+        // Canvas Rendering Logic
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        window.addEventListener('resize', () => {
+            if (!gameSection.classList.contains('hidden')) {
+                resizeCanvas();
+                drawBaseLadder();
+            }
+        });
+
+        function getCanvasCoordinates() {
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+            const cols = players.length;
+            const paddingX = width / (cols * 2); // Equal spacing margins
+            const colSpacing = (width - paddingX * 2) / (cols - 1);
+
+            return { width, height, cols, paddingX, colSpacing };
+        }
+
+        function drawBaseLadder() {
+            const { width, height, cols, paddingX, colSpacing } = getCanvasCoordinates();
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw Vertical Lines
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            for (let i = 0; i < cols; i++) {
+                const x = paddingX + i * colSpacing;
+                ctx.strokeStyle = '#E2E8F0'; // Light slate gray
+                ctx.beginPath();
+                ctx.moveTo(x, 15);
+                ctx.lineTo(x, height - 15);
+                ctx.stroke();
+            }
+
+            // Draw Horizontal Rungs
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#CBD5E1';
+            horizontalLines.forEach(line => {
+                const x1 = paddingX + line.fromCol * colSpacing;
+                const x2 = paddingX + (line.fromCol + 1) * colSpacing;
+                const y = 15 + line.yRatio * (height - 30);
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y);
+                ctx.lineTo(x2, y);
+                ctx.stroke();
+            });
+        }
+
+        // Ladder Path Solver
+        function calculatePath(startCol) {
+            const { height, paddingX, colSpacing } = getCanvasCoordinates();
+            const topY = 15;
+            const bottomY = height - 15;
+
+            let currentCol = startCol;
+            let currentY = topY;
+            const path = [{ x: paddingX + currentCol * colSpacing, y: currentY }];
+
+            // Filter lines relevant to current column traverse
+            while (currentY < bottomY) {
+                // Find next horizontal rung below current Y
+                let nextLine = null;
+                let minDist = Infinity;
+
+                for (let line of horizontalLines) {
+                    const lineY = topY + line.yRatio * (bottomY - topY);
+                    if (lineY > currentY + 0.5) { // tiny epsilon
+                        if (line.fromCol === currentCol || line.fromCol + 1 === currentCol) {
+                            if (lineY - currentY < minDist) {
+                                minDist = lineY - currentY;
+                                nextLine = line;
+                            }
+                        }
+                    }
+                }
+
+                if (nextLine) {
+                    const lineY = topY + nextLine.yRatio * (bottomY - topY);
+                    // Move down to rung
+                    path.push({ x: paddingX + currentCol * colSpacing, y: lineY });
+                    
+                    // Move horizontally across rung
+                    if (nextLine.fromCol === currentCol) {
+                        currentCol += 1;
+                    } else {
+                        currentCol -= 1;
+                    }
+                    path.push({ x: paddingX + currentCol * colSpacing, y: lineY });
+                    currentY = lineY;
+                } else {
+                    // No more rungs, go straight to bottom
+                    path.push({ x: paddingX + currentCol * colSpacing, y: bottomY });
+                    currentY = bottomY;
+                }
+            }
+
+            return { path, finalCol: currentCol };
+        }
+
+        // Animation Handling
+        function startSingleLadder(playerIdx) {
+            if (isAnimating) return;
+            const pathData = calculatePath(playerIdx);
+            completedPlayers.add(playerIdx);
+            finalMapping[playerIdx] = pathData.finalCol;
+
+            statusText.textContent = `${players[playerIdx].name}님 결과 확인 중...`;
+
+            animatePaths([{
+                playerIdx,
+                color: PLAYER_COLORS[playerIdx % PLAYER_COLORS.length],
+                path: pathData.path,
+                progress: 0
+            }]);
+        }
+
+        runAllBtn.addEventListener('click', () => {
+            if (isAnimating) return;
+
+            const animations = [];
+            players.forEach((p, idx) => {
+                completedPlayers.add(idx);
+                const pathData = calculatePath(idx);
+                finalMapping[idx] = pathData.finalCol;
+
+                animations.push({
+                    playerIdx: idx,
+                    color: PLAYER_COLORS[idx % PLAYER_COLORS.length],
+                    path: pathData.path,
+                    progress: 0
+                });
+            });
+
+            statusText.textContent = `전체 사다리 진행 중...`;
+            animatePaths(animations);
+        });
+
+        function animatePaths(animObjects) {
+            isAnimating = true;
+            const speed = 0.015; // Controls line drawing speed
+
+            function step() {
+                drawBaseLadder();
+
+                let allFinished = true;
+
+                animObjects.forEach(obj => {
+                    if (obj.progress < 1) {
+                        obj.progress += speed;
+                        if (obj.progress > 1) obj.progress = 1;
+                        allFinished = false;
+                    }
+
+                    // Render current path progress
+                    renderPartialPath(obj.path, obj.progress, obj.color);
+                });
+
+                if (!allFinished) {
+                    playSound('step');
+                    requestAnimationFrame(step);
+                } else {
+                    isAnimating = false;
+                    playSound('complete');
+                    statusText.textContent = '결과가 나왔습니다!';
+                    highlightResults();
+                    checkAllCompleted();
+                }
+            }
+
+            requestAnimationFrame(step);
+        }
+
+        function renderPartialPath(path, progress, color) {
+            if (path.length < 2) return;
+
+            // Calculate total line segments length
+            let totalLength = 0;
+            const lengths = [];
+            for (let i = 0; i < path.length - 1; i++) {
+                const dx = path[i + 1].x - path[i].x;
+                const dy = path[i + 1].y - path[i].y;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                lengths.push(len);
+                totalLength += len;
+            }
+
+            let targetLength = totalLength * progress;
+            let currentLen = 0;
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(path[0].x, path[0].y);
+
+            for (let i = 0; i < path.length - 1; i++) {
+                if (currentLen + lengths[i] <= targetLength) {
+                    ctx.lineTo(path[i + 1].x, path[i + 1].y);
+                    currentLen += lengths[i];
+                } else {
+                    const remaining = targetLength - currentLen;
+                    const ratio = remaining / lengths[i];
+                    const nx = path[i].x + (path[i + 1].x - path[i].x) * ratio;
+                    const ny = path[i].y + (path[i + 1].y - path[i].y) * ratio;
+                    ctx.lineTo(nx, ny);
+                    break;
+                }
+            }
+            ctx.stroke();
+        }
+
+        function highlightResults() {
+            Object.keys(finalMapping).forEach(playerIdx => {
+                const resultIdx = finalMapping[playerIdx];
+                const btmBox = document.getElementById(`bottom-result-${resultIdx}`);
+                if (btmBox) {
+                    const color = PLAYER_COLORS[playerIdx % PLAYER_COLORS.length];
+                    btmBox.style.borderColor = color;
+                    btmBox.style.backgroundColor = color + '15'; // Hex with opacity
+                    btmBox.style.color = color;
+                }
+            });
+        }
+
+        function checkAllCompleted() {
+            if (completedPlayers.size === players.length) {
+                summarySection.classList.remove('hidden');
+                summaryList.innerHTML = '';
+
+                players.forEach((p, idx) => {
+                    const resultIdx = finalMapping[idx];
+                    const color = PLAYER_COLORS[idx % PLAYER_COLORS.length];
+
+                    const item = document.createElement('div');
+                    item.className = "p-3 rounded-xl border flex flex-col gap-1 text-center font-bold text-xs shadow-xs";
+                    item.style.borderColor = color + '40';
+                    item.style.backgroundColor = color + '0D';
+
+                    item.innerHTML = `
+                        <span class="text-slate-400 text-[10px]">${p.name}</span>
+                        <span class="text-sm font-extrabold" style="color: ${color}">${players[resultIdx].result}</span>
+                    `;
+                    summaryList.appendChild(item);
+                });
+
+                // Confetti Animation Trigger
+                try {
+                    confetti({
+                        particleCount: 70,
+                        spread: 60,
+                        origin: { y: 0.8 }
+                    });
+                } catch (e) {}
+            }
+        }
+
+        // Initialize App on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderInputFields();
+        });
+    </script>
+</body>
+</html>
